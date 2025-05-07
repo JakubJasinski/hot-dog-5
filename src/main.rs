@@ -1,9 +1,10 @@
+use std::marker::PhantomData;
+
+use beavy_game::cursor::{CursorCoords, CursorPlugin};
 use bevy::{
     dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
-    input::mouse::MouseMotion,
     prelude::*,
     text::FontSmoothing,
-    window::PrimaryWindow,
 };
 
 struct Matrix {
@@ -11,7 +12,11 @@ struct Matrix {
     rows: usize,
 }
 
+/// Used to help identify our main camera
 #[derive(Component)]
+pub struct MainCamera;
+
+#[derive(Component, Debug)]
 struct Tile {
     x: f32,
     y: f32,
@@ -22,7 +27,7 @@ fn start_up(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    commands.spawn(Camera2d);
+    commands.spawn((MainCamera, Camera2d));
     let columns = 20;
     let rows = 20;
     let mut tiles = vec![];
@@ -50,22 +55,24 @@ fn start_up(
 }
 
 fn mouse_motion(
-    q_windows: Query<&Window, With<PrimaryWindow>>,
     tiles: Query<(&mut MeshMaterial2d<ColorMaterial>, &Tile)>,
+    cursor: Res<CursorCoords>,
 ) {
-    if let Ok(Some(cursor)) = q_windows.single().map(|c| c.cursor_position()) {
-        if let Some((color, _)) = tiles.iter().find(|(_, tile)| {
-            tile.x.floor() as u32 == cursor.x.floor() as u32
-                && tile.y.floor() as u32 == cursor.y.floor() as u32
-        }) {
-            dbg!(color);
-        }
+    if let Some((color, _)) = tiles.iter().find(|(_, tile)| {
+        let in_x = tile.x <= cursor.0.x && cursor.0.x <= tile.x + 20.;
+        let in_y = tile.y <= cursor.0.y && cursor.0.y <= tile.y + 20.;
+        in_x && in_y
+    }) {
+        dbg!(color);
     }
 }
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugins(CursorPlugin::<MainCamera> {
+            phantom: PhantomData,
+        })
         .add_plugins(FpsOverlayPlugin {
             config: FpsOverlayConfig {
                 text_config: TextFont {
