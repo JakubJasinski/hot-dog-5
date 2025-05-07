@@ -70,9 +70,7 @@ fn mouse_motion(
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(CursorPlugin::<MainCamera> {
-            phantom: PhantomData,
-        })
+        .add_plugins(CursorPlugin::<MainCamera>::new())
         .add_plugins(FpsOverlayPlugin {
             config: FpsOverlayConfig {
                 text_config: TextFont {
@@ -87,7 +85,7 @@ fn main() {
                 // We can also change color of the overlay
                 text_color: Color::srgb(0.0, 1.0, 0.0),
                 enabled: true,
-                ..Default::default()
+                ..default()
             },
         })
         .add_systems(Startup, start_up)

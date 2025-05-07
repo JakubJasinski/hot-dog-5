@@ -4,7 +4,15 @@ use bevy::{prelude::*, window::PrimaryWindow};
 
 #[derive(Default)]
 pub struct CursorPlugin<C> {
-    pub phantom: PhantomData<C>,
+    phantom: PhantomData<C>,
+}
+
+impl<C> CursorPlugin<C> {
+    pub fn new() -> Self {
+        CursorPlugin {
+            phantom: PhantomData,
+        }
+    }
 }
 
 impl<C: 'static + Component> Plugin for CursorPlugin<C> {
