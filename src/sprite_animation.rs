@@ -9,21 +9,27 @@ enum AnimationIndicesCount {
     NotInitialised,
 }
 
+#[derive(Component, Clone, Copy)]
+pub struct TurnDirection(pub Vec2);
+
 #[derive(Bundle)]
 pub struct AnimatedSprite {
     timer: AnimationTimer,
     sprite: Sprite,
     index: AnimationIndicesCount,
+    direction: TurnDirection,
 }
 
 impl AnimatedSprite {
     pub fn new(image: Handle<Image>, layout: Handle<TextureAtlasLayout>) -> Self {
         let sprite = Sprite::from_atlas_image(image, TextureAtlas { layout, index: 0 });
         let timer = AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating));
+        let direction = TurnDirection((1., 0.).into());
         AnimatedSprite {
             timer,
             sprite,
             index: AnimationIndicesCount::NotInitialised,
+            direction,
         }
     }
 }
@@ -43,6 +49,12 @@ fn update_counts(
     }
 }
 
+fn turn_sprite(query: Query<(&mut Sprite, &TurnDirection)>) {
+    for (mut sprite, TurnDirection(direction)) in query {
+        sprite.flip_x = direction.x > 0.;
+    }
+}
+
 fn animate_sprite(
     time: Res<Time>,
     query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndicesCount)>,
@@ -50,7 +62,6 @@ fn animate_sprite(
     for (mut timer, mut sprite, count) in query {
         if let AnimationIndicesCount::Count(max_index) = count {
             timer.tick(time.delta());
-
             if timer.just_finished() {
                 if let Some(atlas) = &mut sprite.texture_atlas {
                     atlas.index = if atlas.index == *max_index {
@@ -67,6 +78,6 @@ fn animate_sprite(
 pub struct AnimatedSpritePlugin;
 impl Plugin for AnimatedSpritePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (update_counts, animate_sprite).chain());
+        app.add_systems(Update, (update_counts, animate_sprite, turn_sprite).chain());
     }
 }

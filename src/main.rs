@@ -1,9 +1,10 @@
 use beavy_game::{
     cursor::CursorPlugin,
-    sprite_animation::{AnimatedSprite, AnimatedSpritePlugin},
+    sprite_animation::{AnimatedSprite, AnimatedSpritePlugin, TurnDirection},
 };
 use bevy::{
     dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
+    input::keyboard::KeyboardInput,
     prelude::*,
     text::FontSmoothing,
 };
@@ -12,8 +13,8 @@ use bevy::{
 #[derive(Component)]
 pub struct MainCamera;
 
-#[derive(Component, Deref, DerefMut)]
-struct AnimationTimer(Timer);
+#[derive(Component)]
+struct MovableByKeybord;
 
 fn start_up(
     mut commands: Commands,
@@ -32,8 +33,32 @@ fn start_up(
                 None,
             )),
         ),
+        MovableByKeybord,
         Transform::from_scale(Vec3::splat(6.0)),
     ));
+}
+
+fn move_by_keyboard(
+    query: Query<(&mut Transform, &mut TurnDirection), With<MovableByKeybord>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+) {
+    let velocity: Vec2 = keyboard
+        .get_pressed()
+        .map(|k| match k {
+            KeyCode::ArrowRight => Vec2 { x: 1., y: 0. },
+            KeyCode::ArrowUp => Vec2 { x: 0., y: 1. },
+            KeyCode::ArrowLeft => Vec2 { x: -1., y: 0. },
+            KeyCode::ArrowDown => Vec2 { x: 0., y: -1. },
+            _ => Vec2 { x: 0., y: 0. },
+        })
+        .sum::<Vec2>()
+        .normalize_or_zero();
+    for (mut entity_trans, mut turn_direction) in query {
+        entity_trans.translation += Vec3::from((velocity, 0.));
+        if velocity != (0., 0.).into() {
+            *turn_direction = TurnDirection(velocity);
+        }
+    }
 }
 
 fn main() {
@@ -59,5 +84,6 @@ fn main() {
             },
         })
         .add_systems(Startup, start_up)
+        .add_systems(FixedUpdate, move_by_keyboard)
         .run();
 }
