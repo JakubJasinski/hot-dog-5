@@ -48,6 +48,42 @@ fn spawn_objects(
     }
 }
 
+fn detect_collision(
+    mut commands: Commands,
+    query_player: Query<(&Transform, &Sprite), With<MovableByKeybord>>,
+    mut query_boxes: Query<(Entity, &Transform, &Sprite), With<PickableObject>>,
+    textures: Res<Assets<Image>>,
+) {
+    if let Ok((player_transform, player_sprite)) = query_player.single() {
+        for (box_entity, box_transform, box_sprite) in query_boxes.iter_mut() {
+            let player_size = player_sprite.custom_size.unwrap_or_else(|| {
+                textures
+                    .get(&player_sprite.image)
+                    .map(|image| image.size().as_vec2())
+                    .unwrap_or(Vec2::ZERO)
+            }) * player_transform.scale.truncate();
+
+            let box_size = box_sprite.custom_size.unwrap_or_else(|| {
+                textures
+                    .get(&box_sprite.image)
+                    .map(|image| image.size().as_vec2())
+                    .unwrap_or(Vec2::ZERO)
+            }) * box_transform.scale.truncate();
+
+            let collision_radius = (player_size.x + box_size.x) / 2.0;
+
+            let distance = player_transform
+                .translation
+                .truncate()
+                .distance(box_transform.translation.truncate());
+
+            if distance < collision_radius {
+                commands.entity(box_entity).despawn();
+            }
+        }
+    }
+}
+
 fn start_up(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -119,6 +155,7 @@ fn main() {
         .add_systems(Startup, start_up)
         .add_systems(FixedUpdate, move_by_keyboard)
         .add_systems(Update, spawn_objects)
+        .add_systems(Update, detect_collision) // Add the collision detection system
         .insert_resource(SpawnTimer(Timer::from_seconds(0.5, TimerMode::Repeating)))
         .run();
 }
