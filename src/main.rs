@@ -4,7 +4,6 @@ use beavy_game::{
 };
 use bevy::{
     dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
-    input::keyboard::KeyboardInput,
     prelude::*,
     text::FontSmoothing,
 };
@@ -15,6 +14,39 @@ pub struct MainCamera;
 
 #[derive(Component)]
 struct MovableByKeybord;
+
+#[derive(Resource)]
+struct SpawnTimer(Timer);
+
+#[derive(Component)]
+struct PickableObject;
+
+fn spawn_objects(
+    mut commands: Commands,
+    mut spawn_timer: ResMut<SpawnTimer>,
+    time: Res<Time>,
+    window: Single<&Window>,
+) {
+    if spawn_timer.0.tick((time.delta())).just_finished() {
+        commands.spawn((
+            PickableObject,
+            Transform::from_translation(Vec3::new(
+                rand::random::<f32>() * window.resolution.width() - window.resolution.width() / 2.,
+                rand::random::<f32>() * window.resolution.height()
+                    - window.resolution.height() / 2.,
+                0.0,
+            )),
+            Sprite::from_color(
+                Color::srgb(
+                    rand::random::<f32>(),
+                    rand::random::<f32>(),
+                    rand::random::<f32>(),
+                ),
+                Vec2::splat(20.0),
+            ),
+        ));
+    }
+}
 
 fn start_up(
     mut commands: Commands,
@@ -53,10 +85,11 @@ fn move_by_keyboard(
         })
         .sum::<Vec2>()
         .normalize_or_zero();
+
     for (mut entity_trans, mut turn_direction) in query {
         entity_trans.translation += Vec3::from((velocity, 0.));
         if velocity != (0., 0.).into() {
-            *turn_direction = TurnDirection(velocity);
+            turn_direction.0 = velocity;
         }
     }
 }
@@ -85,5 +118,7 @@ fn main() {
         })
         .add_systems(Startup, start_up)
         .add_systems(FixedUpdate, move_by_keyboard)
+        .add_systems(Update, spawn_objects)
+        .insert_resource(SpawnTimer(Timer::from_seconds(0.5, TimerMode::Repeating)))
         .run();
 }

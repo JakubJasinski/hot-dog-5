@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 bevy = { version = "0.16.0", features = ["bevy_dev_tools"] }
 glam = "0.30.3"
+rand = "0.9.1"
