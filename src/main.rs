@@ -8,12 +8,17 @@ use bevy::{
     text::FontSmoothing,
 };
 
-/// Used to help identify our main camera
 #[derive(Component)]
 pub struct MainCamera;
 
 #[derive(Component)]
 struct MovableByKeybord;
+
+#[derive(Event)]
+struct CollisionEvent;
+
+#[derive(Resource, Default)]
+struct Score(u32);
 
 #[derive(Resource)]
 struct SpawnTimer(Timer);
@@ -50,6 +55,7 @@ fn spawn_objects(
 
 fn detect_collision(
     mut commands: Commands,
+    mut collision_events: EventWriter<CollisionEvent>,
     query_player: Query<(&Transform, &Sprite), With<MovableByKeybord>>,
     mut query_boxes: Query<(Entity, &Transform, &Sprite), With<PickableObject>>,
     textures: Res<Assets<Image>>,
@@ -78,9 +84,22 @@ fn detect_collision(
                 .distance(box_transform.translation.truncate());
 
             if distance < collision_radius {
+                println!("Collision detected with a box!");
+                collision_events.write(CollisionEvent);
+
                 commands.entity(box_entity).despawn();
             }
         }
+    }
+}
+
+fn handle_collision_events(
+    mut collision_events: EventReader<CollisionEvent>,
+    mut score: ResMut<Score>,
+) {
+    for _ in collision_events.read() {
+        score.0 += 1;
+        println!("Score: {}", score.0);
     }
 }
 
@@ -155,7 +174,10 @@ fn main() {
         .add_systems(Startup, start_up)
         .add_systems(FixedUpdate, move_by_keyboard)
         .add_systems(Update, spawn_objects)
-        .add_systems(Update, detect_collision) // Add the collision detection system
+        .add_systems(Update, detect_collision)
+        .add_systems(Update, handle_collision_events)
         .insert_resource(SpawnTimer(Timer::from_seconds(0.5, TimerMode::Repeating)))
+        .insert_resource(Score::default())
+        .add_event::<CollisionEvent>()
         .run();
 }
